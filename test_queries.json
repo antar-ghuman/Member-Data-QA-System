@@ -1,0 +1,36 @@
+{
+  "test_queries": [
+    {
+      "question": "When is Layla planning her trip to London?",
+      "expected_type": "date/time information"
+    },
+    {
+      "question": "How many cars does Vikram Desai have?",
+      "expected_type": "count/number"
+    },
+    {
+      "question": "What are Amira's favorite restaurants?",
+      "expected_type": "list of restaurants"
+    },
+    {
+      "question": "Where does Marcus work?",
+      "expected_type": "company/location"
+    },
+    {
+      "question": "What are Sarah's hobbies?",
+      "expected_type": "list of activities"
+    },
+    {
+      "question": "When did Chen last visit Tokyo?",
+      "expected_type": "date information"
+    },
+    {
+      "question": "What programming languages does Alex know?",
+      "expected_type": "list of languages"
+    },
+    {
+      "question": "How many children does Elena have?",
+      "expected_type": "count/number"
+    }
+  ]
+}
