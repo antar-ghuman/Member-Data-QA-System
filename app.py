@@ -98,10 +98,10 @@ async def fetch_all_messages() -> List[Dict[str, Any]]:
                 if total > 0 and len(all_messages) >= total:
                     break
                 
-                if len(items) < limit:
+                # Stop early if we have enough data
+                if len(all_messages) >= 300:
+                    print(f"Stopping early with {len(all_messages)} messages")
                     break
-                    
-                skip += limit
                 
             except httpx.ConnectError as e:
                 print(f"Connection error at skip={skip}: {str(e)[:100]}")
