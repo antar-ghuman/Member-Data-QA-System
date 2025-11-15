@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Member QA System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fafafa;
+            border-radius: 5px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user {
+            background: #007bff;
+            color: white;
+            text-align: right;
+        }
+        .bot {
+            background: #e9ecef;
+            color: #333;
+        }
+        .input-box {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 30px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .examples {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .examples h3 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .example-btn {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .example-btn:hover {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Member Data QA System</h1>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="input-box">
+            <input type="text" id="questionInput" placeholder="Ask a question about member data..." onkeypress="if(event.key === 'Enter') askQuestion()">
+            <button onclick="askQuestion()" id="askBtn">Ask</button>
+        </div>
+        <div class="examples">
+            <h3>Try these examples:</h3>
+            <span class="example-btn" onclick="setQuestion('What does Layla prefer during flights?')">Layla's flight preference</span>
+            <span class="example-btn" onclick="setQuestion('Where does Sophia want to go this Friday?')">Sophia's trip</span>
+            <span class="example-btn" onclick="setQuestion('What event is Armand attending in Milan?')">Armand's event</span>
+        </div>
+    </div>
+
+    <script>
+        function addMessage(text, isUser) {
+            const chatBox = document.getElementById('chatBox');
+            const msg = document.createElement('div');
+            msg.className = 'message ' + (isUser ? 'user' : 'bot');
+            msg.textContent = text;
+            chatBox.appendChild(msg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function setQuestion(text) {
+            document.getElementById('questionInput').value = text;
+        }
+
+        async function askQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            
+            if (!question) return;
+            
+            addMessage(question, true);
+            input.value = '';
+            
+            const btn = document.getElementById('askBtn');
+            btn.disabled = true;
+            btn.textContent = 'Thinking...';
+            
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question: question})
+                });
+                
+                const data = await response.json();
+                addMessage(data.answer || 'Sorry, I could not find an answer.', false);
+            } catch (error) {
+                addMessage('Error: ' + error.message, false);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Ask';
+        }
+
+        // Welcome message
+        addMessage('Hi! Ask me anything about member data.', false);
+    </script>
+</body>
+</html>
