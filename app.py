@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 import os
 from datetime import datetime, timedelta
 import re
+from fastapi.responses import FileResponse
 
 app = FastAPI(
     title="Member Data QA System",
@@ -252,6 +253,10 @@ async def root():
             "/health": "GET - Health check"
         }
     }
+    
+@app.get("/", response_class=FileResponse)
+async def serve_ui():
+    return FileResponse("index.html")
 
 @app.post("/ask", response_model=Answer)
 async def ask_question_endpoint(question: Question):
