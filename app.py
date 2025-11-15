@@ -11,6 +11,7 @@ import os
 from datetime import datetime, timedelta
 import re
 from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 
 app = FastAPI(
     title="Member Data QA System",
@@ -243,20 +244,21 @@ def rule_based_answer(question: str, user_data: Dict[str, List[Dict]]) -> str:
     
     return "I don't have enough information to answer that question."
 
-@app.get("/")
-async def root():
-    return {
-        "status": "ok",
-        "service": "Member Data QA System",
-        "endpoints": {
-            "/ask": "POST - Ask questions",
-            "/health": "GET - Health check"
-        }
-    }
+# @app.get("/")
+# async def root():
+#     return {
+#         "status": "ok",
+#         "service": "Member Data QA System",
+#         "endpoints": {
+#             "/ask": "POST - Ask questions",
+#             "/health": "GET - Health check"
+#         }
+#     }
     
-@app.get("/", response_class=FileResponse)
-async def serve_ui():
-    return FileResponse("index.html")
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    with open("index.html", "r") as f:
+        return f.read()
 
 @app.post("/ask", response_model=Answer)
 async def ask_question_endpoint(question: Question):
