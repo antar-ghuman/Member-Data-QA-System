@@ -319,5 +319,7 @@ async def debug_fetch():
 
 if __name__ == "__main__":
     import uvicorn
+    # Railway sets PORT env var, but we need to handle it properly
     port = int(os.environ.get("PORT", 8000))
+    print(f"Starting server on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
