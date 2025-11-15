@@ -57,20 +57,30 @@ async def fetch_all_messages() -> List[Dict[str, Any]]:
     consecutive_errors = 0
     max_errors = 3
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         while skip < 1000:  # Safety limit
             try:
+                print(f"Attempting to fetch from skip={skip}")
                 response = await client.get(
                     MESSAGES_API_URL,
                     params={"skip": skip, "limit": limit}
                 )
+                
+                print(f"Response status: {response.status_code}")
                 
                 # Handle errors gracefully
                 if response.status_code in [400, 401, 404]:
                     print(f"API returned {response.status_code} at skip={skip}, stopping")
                     break
                 
-                response.raise_for_status()
+                if response.status_code != 200:
+                    print(f"Unexpected status {response.status_code}, response: {response.text[:200]}")
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_errors:
+                        break
+                    skip += limit
+                    continue
+                
                 data = response.json()
                 
                 items = data.get("items", [])
@@ -91,18 +101,28 @@ async def fetch_all_messages() -> List[Dict[str, Any]]:
                     
                 skip += limit
                 
-            except Exception as e:
-                print(f"Error at skip={skip}: {str(e)[:100]}")
+            except httpx.ConnectError as e:
+                print(f"Connection error at skip={skip}: {str(e)[:100]}")
                 consecutive_errors += 1
                 if consecutive_errors >= max_errors:
+                    print(f"Too many connection errors, stopping")
+                    break
+                skip += limit
+                
+            except Exception as e:
+                print(f"Error at skip={skip}: {type(e).__name__}: {str(e)[:100]}")
+                consecutive_errors += 1
+                if consecutive_errors >= max_errors:
+                    print(f"Too many errors, stopping with {len(all_messages)} messages")
                     break
                 skip += limit
     
     print(f"Successfully fetched {len(all_messages)} total messages")
     
-    # Update cache
-    _messages_cache = all_messages
-    _cache_timestamp = datetime.now()
+    # Update cache even if we got some messages
+    if all_messages:
+        _messages_cache = all_messages
+        _cache_timestamp = datetime.now()
     
     return all_messages
 
@@ -240,7 +260,15 @@ async def ask_question_endpoint(question: Question):
         messages = await fetch_all_messages()
         
         if not messages:
-            raise HTTPException(status_code=503, detail="Unable to fetch messages")
+            # Try to get more info about why
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    test_response = await client.get(MESSAGES_API_URL, params={"skip": 0, "limit": 1})
+                    error_detail = f"API returned status {test_response.status_code}. The messages API might be temporarily unavailable."
+            except Exception as e:
+                error_detail = f"Unable to connect to messages API: {str(e)[:100]}"
+            
+            raise HTTPException(status_code=503, detail=error_detail)
         
         answer_text = await answer_question(question.question, messages)
         
@@ -250,7 +278,7 @@ async def ask_question_endpoint(question: Question):
         raise
     except Exception as e:
         print(f"Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)[:200]}")
 
 @app.get("/health")
 async def health_check():
@@ -259,14 +287,35 @@ async def health_check():
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(MESSAGES_API_URL, params={"skip": 0, "limit": 1})
             api_ok = response.status_code == 200
-    except:
+            api_status = response.status_code
+    except Exception as e:
         api_ok = False
+        api_status = str(e)
     
     return {
         "status": "healthy",
         "api_connected": api_ok,
+        "api_status": api_status,
         "cached_messages": len(_messages_cache) if _messages_cache else 0
     }
+
+@app.get("/debug/fetch")
+async def debug_fetch():
+    """Debug endpoint to test message fetching."""
+    try:
+        messages = await fetch_all_messages()
+        return {
+            "success": True,
+            "message_count": len(messages),
+            "sample_message": messages[0] if messages else None,
+            "users": list(set(m.get("user_name") for m in messages)) if messages else []
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
 
 if __name__ == "__main__":
     import uvicorn
